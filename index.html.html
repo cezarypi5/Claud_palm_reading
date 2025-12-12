@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔮 Mystic Palm Reader</title>
+    <script src="https://docs.opencv.org/4.x/opencv.js" async></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #ffd700, #ffb347, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #a0a0c0;
+            font-size: 1rem;
+        }
+
+        .upload-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            text-align: center;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #9f7aea, #818cf8);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid rgba(139, 92, 246, 0.5);
+            color: #a78bfa;
+        }
+
+        .btn-outline:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .image-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            margin-top: 20px;
+        }
+
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .image-wrapper img {
+            width: 100%;
+            border-radius: 15px;
+            display: block;
+        }
+
+        .image-wrapper canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 15px;
+            pointer-events: none;
+        }
+
+        .analyzing-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .magic-circle {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin-bottom: 20px;
+        }
+
+        .magic-circle .ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid transparent;
+        }
+
+        .magic-circle .ring:nth-child(1) {
+            inset: 0;
+            border-color: rgba(139, 92, 246, 0.5);
+            animation: spin 3s linear infinite;
+        }
+
+        .magic-circle .ring:nth-child(2) {
+            inset: 10px;
+            border-color: rgba(251, 191, 36, 0.5);
+            animation: spin 2s linear infinite reverse;
+        }
+
+        .magic-circle .ring:nth-child(3) {
+            inset: 20px;
+            border-color: rgba(236, 72, 153, 0.5);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .magic-circle .crystal {
+            position: absolute;
+            inset: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6, #fbbf24);
+            transition: width 0.3s ease;
+        }
+
+        .status-text {
+            color: #c4b5fd;
+            font-size: 0.9rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .reading-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            margin-top: 20px;
+        }
+
+        .reading-section h2 {
+            text-align: center;
+            color: #fbbf24;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .reading-content {
+            color: #e0e0f0;
+            line-height: 1.8;
+            white-space: pre-line;
+        }
+
+        .reading-content h3 {
+            color: #c4b5fd;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .legend {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .legend h4 {
+            color: #fbbf24;
+            margin-bottom: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .tip {
+            text-align: center;
+            color: rgba(160, 160, 192, 0.6);
+            font-size: 0.85rem;
+            margin-top: 20px;
+        }
+
+        /* Stars background */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Stars Background -->
+    <div class="stars" id="stars"></div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔮 Mystic Palm Reader</h1>
+            <p>Reveal the secrets written in your hand</p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="upload-section" id="uploadSection">
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                    📷 Upload Photo
+                </button>
+                <button class="btn btn-secondary" onclick="captureCamera()">
+                    📱 Take Photo
+                </button>
+            </div>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)" style="display: none;">
+            <p class="tip">For best results, photograph your palm in good lighting with fingers spread</p>
+        </div>
+
+        <!-- Image Container -->
+        <div class="image-container hidden" id="imageContainer">
+            <div class="image-wrapper">
+                <img id="palmImage" src="" alt="Palm">
+                <canvas id="overlayCanvas"></canvas>
+                
+                <!-- Analyzing Overlay -->
+                <div class="analyzing-overlay hidden" id="analyzingOverlay">
+                    <div class="magic-circle">
+                        <div class="ring"></div>
+                        <div class="ring"></div>
+                        <div class="ring"></div>
+                        <div class="crystal">🔮</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p class="status-text" id="statusText">Initializing mystical analysis...</p>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend" id="legend" style="display: none;">
+                <h4>Palm Lines</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FF4444;"></div>
+                    <span>Heart Line - Love & Emotions</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4444FF;"></div>
+                    <span>Head Line - Mind & Intellect</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #44FF44;"></div>
+                    <span>Life Line - Vitality & Energy</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #AA44AA;"></div>
+                    <span>Fate Line - Destiny & Purpose</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="btn btn-primary hidden" id="analyzeBtn" onclick="analyzePalm()">
+                    🔮 Analyze Palm
+                </button>
+                <button class="btn btn-outline hidden" id="toggleBtn" onclick="toggleOverlay()">
+                    👁️ Toggle Lines
+                </button>
+                <button class="btn btn-outline" id="newPhotoBtn" onclick="resetApp()" style="display: none;">
+                    🔄 New Photo
+                </button>
+            </div>
+        </div>
+
+        <!-- Reading Section -->
+        <div class="reading-section hidden" id="readingSection">
+            <h2>✨ Your Mystical Reading ✨</h2>
+            <div class="reading-content" id="readingContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Generate stars
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 100; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.animationDelay = Math.random() * 3 + 's';
+            starsContainer.appendChild(star);
+        }
+
+        let analysisResult = null;
+        let showOverlay = true;
+        let cvReady = false;
+
+        // Check if OpenCV is ready
+        function onOpenCvReady() {
+            cvReady = true;
+            console.log('OpenCV.js is ready');
+        }
+
+        // Wait for OpenCV
+        if (typeof cv !== 'undefined') {
+            cv['onRuntimeInitialized'] = onOpenCvReady;
+        } else {
+            // Check periodically
+            const checkCV = setInterval(() => {
+                if (typeof cv !== 'undefined' && cv.Mat) {
+                    cvReady = true;
+                    console.log('OpenCV.js is ready');
+                    clearInterval(checkCV);
+                }
+            }, 100);
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    showImage(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function captureCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+                
+                await new Promise(resolve => {
+                    video.onloadedmetadata = resolve;
+                });
+                
+                // Wait a moment for video to stabilize
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                
+                stream.getTracks().forEach(track => track.stop());
+                
+                showImage(canvas.toDataURL('image/jpeg'));
+            } catch (error) {
+                console.error('Camera error:', error);
+                alert('Camera access denied. Please use file upload instead.');
+            }
+        }
+
+        function showImage(dataUrl) {
+            const img = document.getElementById('palmImage');
+            img.src = dataUrl;
+            
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('imageContainer').classList.remove('hidden');
+            document.getElementById('analyzeBtn').classList.remove('hidden');
+            document.getElementById('newPhotoBtn').style.display = 'inline-flex';
+            
+            analysisResult = null;
+            document.getElementById('readingSection').classList.add('hidden');
+            document.getElementById('legend').style.display = 'none';
+            document.getElementById('toggleBtn').classList.add('hidden');
+            
+            // Clear canvas
+            const canvas = document.getElementById('overlayCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        async function analyzePalm() {
+            const img = document.getElementById('palmImage');
+            const overlay = document.getElementById('analyzingOverlay');
+            const progressFill = document.getElementById('progressFill');
+            const statusText = document.getElementById('statusText');
+            
+            overlay.classList.remove('hidden');
+            document.getElementById('analyzeBtn').classList.add('hidden');
+            
+            const statuses = [
+                'Detecting palm boundaries...',
+                'Tracing heart line...',
+                'Analyzing head line...',
+                'Mapping life line...',
+                'Identifying fate line...',
+                'Locating mystical mounts...',
+                'Consulting the stars...',
+                'Interpreting your destiny...'
+            ];
+            
+            let progress = 0;
+            let statusIndex = 0;
+            
+            const progressInterval = setInterval(() => {
+                progress = Math.min(progress + Math.random() * 12, 90);
+                progressFill.style.width = progress + '%';
+            }, 400);
+            
+            const statusInterval = setInterval(() => {
+                if (statusIndex < statuses.length) {
+                    statusText.textContent = statuses[statusIndex];
+                    statusIndex++;
+                }
+            }, 700);
+            
+            // Wait for image to load completely
+            await new Promise(resolve => {
+                if (img.complete) resolve();
+                else img.onload = resolve;
+            });
+            
+            // Try OpenCV detection, fallback to simulated
+            try {
+                if (cvReady) {
+                    analysisResult = await detectWithOpenCV(img);
+                } else {
+                    // Wait a bit more for OpenCV
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    if (cvReady) {
+                        analysisResult = await detectWithOpenCV(img);
+                    } else {
+                        analysisResult = generateSimulatedResult(img.naturalWidth, img.naturalHeight);
+                    }
+                }
+            } catch (error) {
+                console.error('Detection error:', error);
+                analysisResult = generateSimulatedResult(img.naturalWidth, img.naturalHeight);
+            }
+            
+            clearInterval(progressInterval);
+            clearInterval(statusInterval);
+            
+            progressFill.style.width = '100%';
+            statusText.textContent = 'Analysis complete!';
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            overlay.classList.add('hidden');
+            
+            // Draw overlay
+            drawOverlay();
+            
+            // Show reading
+            showReading();
+            
+            document.getElementById('legend').style.display = 'block';
+            document.getElementById('toggleBtn').classList.remove('hidden');
+        }
+
+        async function detectWithOpenCV(img) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const src = cv.imread(img);
+                    const gray = new cv.Mat();
+                    const blurred = new cv.Mat();
+                    const edges = new cv.Mat();
+                    
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+                    cv.Canny(blurred, edges, 30, 100);
+                    
+                    const kernel = cv.Mat.ones(3, 3, cv.CV_8U);
+                    const dilated = new cv.Mat();
+                    cv.dilate(edges, dilated, kernel);
+                    
+                    const contours = new cv.MatVector();
+                    const hierarchy = new cv.Mat();
+                    cv.findContours(dilated, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+                    
+                    const width = src.cols;
+                    const height = src.rows;
+                    const lines = [];
+                    
+                    const lineDefinitions = [
+                        { name: 'Heart Line', color: '#FF4444' },
+                        { name: 'Head Line', color: '#4444FF' },
+                        { name: 'Life Line', color: '#44FF44' },
+                        { name: 'Fate Line', color: '#AA44AA' }
+                    ];
+                    
+                    // Collect significant contours
+                    const contourData = [];
+                    for (let i = 0; i < contours.size(); i++) {
+                        const contour = contours.get(i);
+                        const length = cv.arcLength(contour, false);
+                        
+                        if (length > Math.min(width, height) * 0.12) {
+                            const points = [];
+                            for (let j = 0; j < contour.rows; j++) {
+                                points.push({
+                                    x: contour.data32S[j * 2],
+                                    y: contour.data32S[j * 2 + 1]
+                                });
+                            }
+                            contourData.push({ length, points });
+                        }
+                    }
+                    
+                    contourData.sort((a, b) => b.length - a.length);
+                    
+                    // Assign top contours to lines
+                    contourData.slice(0, 4).forEach((contour, index) => {
+                        if (index < lineDefinitions.length) {
+                            lines.push({
+                                name: lineDefinitions[index].name,
+                                color: lineDefinitions[index].color,
+                                points: contour.points
+                            });
+                        }
+                    });
+                    
+                    // Cleanup
+                    src.delete();
+                    gray.delete();
+                    blurred.delete();
+                    edges.delete();
+                    dilated.delete();
+                    kernel.delete();
+                    contours.delete();
+                    hierarchy.delete();
+                    
+                    // If not enough lines detected, use fallback
+                    if (lines.length < 3) {
+                        resolve(generateSimulatedResult(width, height));
+                    } else {
+                        resolve({
+                            lines,
+                            mounts: generateMounts(width, height),
+                            handShape: determineHandShape(width, height)
+                        });
+                    }
+                } catch (error) {
+                    console.error('OpenCV error:', error);
+                    reject(error);
+                }
+            });
+        }
+
+        function generateSimulatedResult(width, height) {
+            return {
+                lines: [
+                    {
+                        name: 'Heart Line',
+                        color: '#FF4444',
+                        points: generateCurve(width * 0.15, height * 0.28, width * 0.85, height * 0.22, 25, 'wave')
+                    },
+                    {
+                        name: 'Head Line',
+                        color: '#4444FF',
+                        points: generateCurve(width * 0.18, height * 0.42, width * 0.78, height * 0.48, 25, 'slight')
+                    },
+                    {
+                        name: 'Life Line',
+                        color: '#44FF44',
+                        points: generateCurve(width * 0.28, height * 0.22, width * 0.22, height * 0.82, 30, 'arc')
+                    },
+                    {
+                        name: 'Fate Line',
+                        color: '#AA44AA',
+                        points: generateCurve(width * 0.48, height * 0.82, width * 0.45, height * 0.32, 20, 'straight')
+                    }
+                ],
+                mounts: generateMounts(width, height),
+                handShape: determineHandShape(width, height)
+            };
+        }
+
+        function generateCurve(x1, y1, x2, y2, numPoints, type) {
+            const points = [];
+            for (let i = 0; i <= numPoints; i++) {
+                const t = i / numPoints;
+                let x = x1 + (x2 - x1) * t;
+                let y = y1 + (y2 - y1) * t;
+                
+                const noise = (Math.random() - 0.5) * 4;
+                
+                switch (type) {
+                    case 'wave':
+                        y += Math.sin(t * Math.PI * 1.5) * 12 + noise;
+                        break;
+                    case 'slight':
+                        y += Math.sin(t * Math.PI) * 18 + noise;
+                        break;
+                    case 'arc':
+                        x += Math.sin(t * Math.PI) * 35 + noise;
+                        break;
+                    case 'straight':
+                        x += noise * 2;
+                        y += noise * 2;
+                        break;
+                }
+                
+                points.push({ x, y });
+            }
+            return points;
+        }
+
+        function generateMounts(width, height) {
+            return [
+                { name: 'Jupiter', x: width * 0.25, y: height * 0.15, desc: 'Leadership' },
+                { name: 'Saturn', x: width * 0.42, y: height * 0.12, desc: 'Wisdom' },
+                { name: 'Apollo', x: width * 0.58, y: height * 0.12, desc: 'Creativity' },
+                { name: 'Mercury', x: width * 0.75, y: height * 0.15, desc: 'Communication' },
+                { name: 'Venus', x: width * 0.2, y: height * 0.72, desc: 'Love' },
+                { name: 'Luna', x: width * 0.8, y: height * 0.72, desc: 'Intuition' }
+            ];
+        }
+
+        function determineHandShape(width, height) {
+            const ratio = width / height;
+            if (ratio < 0.7) return 'Water';
+            if (ratio > 0.9) return 'Fire';
+            if (ratio >= 0.75) return 'Air';
+            return 'Earth';
+        }
+
+        function drawOverlay() {
+            const img = document.getElementById('palmImage');
+            const canvas = document.getElementById('overlayCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!showOverlay || !analysisResult) return;
+            
+            // Semi-transparent overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw lines
+            analysisResult.lines.forEach(line => {
+                if (line.points.length < 2) return;
+                
+                // Glow effect
+                ctx.beginPath();
+                ctx.strokeStyle = line.color;
+                ctx.lineWidth = 14;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.globalAlpha = 0.25;
+                ctx.shadowColor = line.color;
+                ctx.shadowBlur = 25;
+                
+                ctx.moveTo(line.points[0].x, line.points[0].y);
+                for (let i = 1; i < line.points.length; i++) {
+                    ctx.lineTo(line.points[i].x, line.points[i].y);
+                }
+                ctx.stroke();
+                
+                // Main line
+                ctx.beginPath();
+                ctx.strokeStyle = line.color;
+                ctx.lineWidth = 5;
+                ctx.globalAlpha = 1;
+                ctx.shadowBlur = 12;
+                
+                ctx.moveTo(line.points[0].x, line.points[0].y);
+                for (let i = 1; i < line.points.length; i++) {
+                    ctx.lineTo(line.points[i].x, line.points[i].y);
+                }
+                ctx.stroke();
+                
+                // Label
+                ctx.shadowBlur = 0;
+                const mid = line.points[Math.floor(line.points.length / 2)];
+                const textWidth = ctx.measureText(line.name).width;
+                
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                ctx.fillRect(mid.x - textWidth / 2 - 6, mid.y - 22, textWidth + 12, 22);
+                
+                ctx.fillStyle = line.color;
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(line.name, mid.x, mid.y - 6);
+            });
+            
+            // Draw mounts
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+            
+            analysisResult.mounts.forEach(mount => {
+                ctx.beginPath();
+                ctx.arc(mount.x, mount.y, 22, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.25)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.7)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                const textWidth = ctx.measureText(mount.name).width;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                ctx.fillRect(mount.x - textWidth / 2 - 4, mount.y + 25, textWidth + 8, 16);
+                
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(mount.name, mount.x, mount.y + 37);
+            });
+        }
+
+        function toggleOverlay() {
+            showOverlay = !showOverlay;
+            drawOverlay();
+            
+            const btn = document.getElementById('toggleBtn');
+            btn.innerHTML = showOverlay ? '👁️ Hide Lines' : '👁️‍🗨️ Show Lines';
+        }
+
+        function showReading() {
+            const reading = generateReading();
+            document.getElementById('readingContent').innerHTML = reading;
+            document.getElementById('readingSection').classList.remove('hidden');
+        }
+
+        function generateReading() {
+            if (!analysisResult) return '';
+            
+            const handShapeDesc = {
+                'Earth': 'practical, reliable, and deeply connected to nature. You value stability and have a strong work ethic.',
+                'Air': 'intellectual, curious, and an excellent communicator. Your mind is your greatest asset.',
+                'Water': 'emotionally deep, intuitive, and highly creative. You navigate life through feeling.',
+                'Fire': 'passionate, energetic, and naturally confident. You approach life with enthusiasm.'
+            };
+            
+            return `
+<h3>🌟 Initial Impression</h3>
+<p>Your palm radiates a unique energy that speaks of both wisdom and potential. The lines weave a story of resilience and hidden strength waiting to be discovered.</p>
+
+<h3>🖐️ Hand Type: ${analysisResult.handShape}</h3>
+<p>You possess a ${analysisResult.handShape} hand, indicating you are ${handShapeDesc[analysisResult.handShape]}</p>
+
+<h3>💖 Heart Line - Love & Emotions</h3>
+<p>Your heart line reveals a rich emotional landscape. You have the capacity for deep, meaningful connections and approach love with both passion and wisdom. There may be moments of emotional intensity, but these fuel your capacity for genuine intimacy.</p>
+
+<h3>🧠 Head Line - Mind & Intellect</h3>
+<p>The head line speaks to your mental approach to life. You balance analytical thinking with creative insight, able to see both details and the bigger picture. Trust your instincts when making decisions - your mind serves you well.</p>
+
+<h3>🌿 Life Line - Vitality & Energy</h3>
+<p>Your life line pulses with vital energy. This is NOT about lifespan, but rather your enthusiasm for living. You have reserves of strength that may surprise you in challenging times. Your vitality supports both physical and emotional endeavors.</p>
+
+<h3>⭐ Fate Line - Destiny & Purpose</h3>
+<p>The fate line suggests you are actively shaping your own destiny. External circumstances influence your path, but your choices determine where you ultimately arrive. You have the power to transform challenges into stepping stones.</p>
+
+<h3>🔮 The Mounts - Hidden Strengths</h3>
+<p>
+• <strong>Jupiter:</strong> Leadership potential awaits activation<br>
+• <strong>Apollo:</strong> Creative gifts seeking expression<br>
+• <strong>Mercury:</strong> Communication skills that can open doors<br>
+• <strong>Venus:</strong> Capacity for deep love and passion<br>
+• <strong>Luna:</strong> Intuitive wisdom guiding your path
+</p>
+
+<h3>💫 Your Destiny Message</h3>
+<p style="font-style: italic; color: #fbbf24;">
+Remember, dear seeker: The lines upon your palm are not chains of fate, but whispers of possibility. Your will, your choices, and your heart shape the path ahead. The stars see great potential within you - now it is time to claim it. Trust in your journey, for the universe conspires in favor of the brave. 🌟
+</p>
+            `;
+        }
+
+        function resetApp() {
+            document.getElementById('uploadSection').classList.remove('hidden');
+            document.getElementById('imageContainer').classList.add('hidden');
+            document.getElementById('readingSection').classList.add('hidden');
+            document.getElementById('analyzeBtn').classList.add('hidden');
+            document.getElementById('toggleBtn').classList.add('hidden');
+            document.getElementById('newPhotoBtn').style.display = 'none';
+            document.getElementById('legend').style.display = 'none';
+            document.getElementById('palmImage').src = '';
+            document.getElementById('fileInput').value = '';
+            analysisResult = null;
+            showOverlay = true;
+        }
+    </script>
+</body>
+</html>
